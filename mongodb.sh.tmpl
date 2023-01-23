@@ -15,7 +15,7 @@ case "$1" in
         db="${3:-\$MONGO_INITDB_DATABASE}"
         output="${2:-.}/${3:-default}_$(now).gz"
         echo "Save the '$db' database dump to an $output"
-        docker compose exec "$SERVICE_NAME" \
+        %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
             sh -c "exec mongodump \
                 -u \"\$MONGO_INITDB_ROOT_USERNAME\" \
                 -p \"\$MONGO_INITDB_ROOT_PASSWORD\" \
@@ -29,7 +29,7 @@ case "$1" in
     'dump-all')
         output="${2:-.}/full_$(now).gz"
         echo "Save full dump to an $output"
-        docker compose exec "$SERVICE_NAME" \
+        %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
             sh -c 'exec mongodump \
                 -u "$MONGO_INITDB_ROOT_USERNAME" \
                 -p "$MONGO_INITDB_ROOT_PASSWORD" \
@@ -41,7 +41,7 @@ case "$1" in
     'restore')
         input="$2"
         db="${3:-\$MONGO_INITDB_DATABASE}"
-        docker compose exec -T "$SERVICE_NAME" \
+        %%COMPOSE_COMMAND%% exec -T "$SERVICE_NAME" \
            sh -c "exec mongorestore \
                -u \"\$MONGO_INITDB_ROOT_USERNAME\" \
                -p \"\$MONGO_INITDB_ROOT_PASSWORD\" \
@@ -54,7 +54,7 @@ case "$1" in
         ;;
     'restore-all')
         input="$2"
-        docker compose exec -T "$SERVICE_NAME" \
+        %%COMPOSE_COMMAND%% exec -T "$SERVICE_NAME" \
             sh -c 'exec mongorestore \
                 -u "$MONGO_INITDB_ROOT_USERNAME" \
                 -p "$MONGO_INITDB_ROOT_PASSWORD" \
@@ -64,7 +64,7 @@ case "$1" in
             ' < "$input"
         ;;
     'shell')
-        docker compose exec "$SERVICE_NAME" \
+        %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
             sh -c 'exec mongosh \
                 -u "$MONGO_INITDB_ROOT_USERNAME" \
                 -p "$MONGO_INITDB_ROOT_PASSWORD" \
