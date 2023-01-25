@@ -15,20 +15,43 @@
 # * DATE_FORMAT - The date format used by the date command to generate filenames.
 # * USER_PASSWORD_VAR - The name of the environment variable with the user password.
 #
+# Environment variables:
+# 
+# * MONGO_USER - Force the given username to be used.
+# * MONGO_PASSWORD - Force the given user password to be used.
+#
 # Get script:
 # 
 # wget -qO- https://kyzima-spb.github.io/docker-useful/mongodb.sh.tmpl | \
 # sed \
 #     -e 's/%%COMPOSE_COMMAND%%/docker compose/' \
-#     -e 's/%%SERVICE_NAME%%/mysql/' \
+#     -e 's/%%SERVICE_NAME%%/mongodb/' \
 #     -e 's/%%DATE_FORMAT%%/%F_%k%M%S/' \
-#     -e 's/%%USER_PASSWORD_VAR%%/MYSQL_PASSWORD_FILE/' \
+#     -e 's/%%USER_PASSWORD_VAR%%/MONGO_INITDB_ROOT_PASSWORD_FILE/' \
 #     > mongodb.sh \
 # && chmod +x mongodb.sh
 
 
+makeCredentials()
+{
+    local userPasswordVar='%%USER_PASSWORD_VAR%%'
+    
+    if [[ "$userPasswordVar" == *_FILE ]]; then
+        local default="\$(cat \$$userPasswordVar)"
+    else
+        local default="\$$userPasswordVar"
+    fi
+    
+    local user="${MONGO_USER:-\$MONGO_INITDB_ROOT_USERNAME}"
+    local password="${MONGO_PASSWORD:-$default}"
+
+    echo "-u \"$user\" -p \"$password\" --authenticationDatabase admin"
+}
+
+
 SERVICE_NAME='%%SERVICE_NAME%%'
 DATE_FORMAT='%%DATE_FORMAT%%'
+CREDENTIALS="$(makeCredentials)"
 
 
 case "$1" in
@@ -37,10 +60,7 @@ case "$1" in
         output="${2:-.}/${3:-default}_$(date -u +$DATE_FORMAT).gz"
         echo "Save the '$db' database dump to an $output"
         %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
-            sh -c "exec mongodump \
-                -u \"\$MONGO_INITDB_ROOT_USERNAME\" \
-                -p \"\$MONGO_INITDB_ROOT_PASSWORD\" \
-                --authenticationDatabase admin \
+            sh -c "exec mongodump $CREDENTIALS \
                 -d \"$db\" \
                 --dumpDbUsersAndRoles \
                 --gzip \
@@ -51,22 +71,16 @@ case "$1" in
         output="${2:-.}/full_$(date -u +$DATE_FORMAT).gz"
         echo "Save full dump to an $output"
         %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
-            sh -c 'exec mongodump \
-                -u "$MONGO_INITDB_ROOT_USERNAME" \
-                -p "$MONGO_INITDB_ROOT_PASSWORD" \
-                --authenticationDatabase admin \
+            sh -c "exec mongodump $CREDENTIALS \
                 --gzip \
                 --archive \
-            ' > "$output"
+            " > "$output"
         ;;
     'restore')
         input="$2"
         db="${3:-\$MONGO_INITDB_DATABASE}"
         %%COMPOSE_COMMAND%% exec -T "$SERVICE_NAME" \
-           sh -c "exec mongorestore \
-               -u \"\$MONGO_INITDB_ROOT_USERNAME\" \
-               -p \"\$MONGO_INITDB_ROOT_PASSWORD\" \
-               --authenticationDatabase admin \
+           sh -c "exec mongorestore $CREDENTIALS \
                -d \"$db\" \
                --restoreDbUsersAndRoles \
                --gzip \
@@ -76,21 +90,14 @@ case "$1" in
     'restore-all')
         input="$2"
         %%COMPOSE_COMMAND%% exec -T "$SERVICE_NAME" \
-            sh -c 'exec mongorestore \
-                -u "$MONGO_INITDB_ROOT_USERNAME" \
-                -p "$MONGO_INITDB_ROOT_PASSWORD" \
-                --authenticationDatabase admin \
+            sh -c "exec mongorestore $CREDENTIALS \
                 --gzip \
                 --archive \
-            ' < "$input"
+            " < "$input"
         ;;
     'shell')
         %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
-            sh -c 'exec mongosh \
-                -u "$MONGO_INITDB_ROOT_USERNAME" \
-                -p "$MONGO_INITDB_ROOT_PASSWORD" \
-                --authenticationDatabase admin \
-                "$MONGO_INITDB_DATABASE"'
+            sh -c "exec mongosh $CREDENTIALS \"\$MONGO_INITDB_DATABASE\""
         ;;
     *)
         echo "Usage: $0 {dump,dump-all,restore,restore-all,shell}" >&2
