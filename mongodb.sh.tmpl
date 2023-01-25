@@ -1,27 +1,40 @@
 #!/usr/bin/env bash
-
+#
 # Commands:
 #
-# dump
-# dump-all
-# restore - Restores MongoDB database from the GZ archive.
-# restore-all - Restores MongoDB databases from the GZ archive.
-# shell
+# * dump - Saves the given database to a GZ archive.
+# * dump-all - Saves all databases to a GZ archive.
+# * restore - Restores database from the GZ archive.
+# * restore-all - Restores databases from the GZ archive.
+# * shell - Access to the MongoDB server console.
+#
+# Placeholders:
+#
+# * COMPOSE_COMMAND - The name of the docker compose command.
+# * SERVICE_NAME - Service name in docker-compose.
+# * DATE_FORMAT - The date format used by the date command to generate filenames.
+# * USER_PASSWORD_VAR - The name of the environment variable with the user password.
+#
+# Get script:
+# 
+# wget -qO- https://kyzima-spb.github.io/docker-useful/mongodb.sh.tmpl | \
+# sed \
+#     -e 's/%%COMPOSE_COMMAND%%/docker compose/' \
+#     -e 's/%%SERVICE_NAME%%/mysql/' \
+#     -e 's/%%DATE_FORMAT%%/%F_%k%M%S/' \
+#     -e 's/%%USER_PASSWORD_VAR%%/MYSQL_PASSWORD_FILE/' \
+#     > mongodb.sh \
+# && chmod +x mongodb.sh
 
 
 SERVICE_NAME='%%SERVICE_NAME%%'
-
-
-now()
-{
-    date +"%s"
-}
+DATE_FORMAT='%%DATE_FORMAT%%'
 
 
 case "$1" in
     'dump')
         db="${3:-\$MONGO_INITDB_DATABASE}"
-        output="${2:-.}/${3:-default}_$(now).gz"
+        output="${2:-.}/${3:-default}_$(date -u +$DATE_FORMAT).gz"
         echo "Save the '$db' database dump to an $output"
         %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
             sh -c "exec mongodump \
@@ -35,7 +48,7 @@ case "$1" in
             " > "$output"
         ;;
     'dump-all')
-        output="${2:-.}/full_$(now).gz"
+        output="${2:-.}/full_$(date -u +$DATE_FORMAT).gz"
         echo "Save full dump to an $output"
         %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
             sh -c 'exec mongodump \

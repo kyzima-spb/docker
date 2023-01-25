@@ -1,20 +1,43 @@
 #!/usr/bin/env bash
-
+#
 # Commands:
 #
-# dump
-# dump-all
-# restore - Restores database from the file.
-# restore-all - Restores all databases from the file.
-# shell
+# * dump - Saves the given or all databases to a file.
+# * dump-db - Saves the given database to a file.
+# * restore - Restores all databases from the file.
+# * restore-db - Restores database from the file.
+# * shell - Access to the MySQL server console.
 #
-# MYSQL_USER='$MYSQL_USER' MYSQL_PASSWORD='$MYSQL_PASSWORD' ./mysql.sh shell
+# Placeholders:
+#
+# * COMPOSE_COMMAND - The name of the docker compose command.
+# * SERVICE_NAME - Service name in docker-compose.
+# * DATE_FORMAT - The date format used by the date command to generate filenames.
+# * ROOT_PASSWORD_VAR - The name of the environment variable with the root password.
+# * USER_PASSWORD_VAR - The name of the environment variable with the user password.
+# 
+# Environment variables:
+# 
+# * MYSQL_USER - Force the given username to be used.
+# * MYSQL_PASSWORD - Force the given user password to be used.
+#
+# Get script:
+# 
+# wget -qO- https://kyzima-spb.github.io/docker-useful/mysql.sh.tmpl | \
+# sed \
+#     -e 's/%%COMPOSE_COMMAND%%/docker compose/' \
+#     -e 's/%%SERVICE_NAME%%/mysql/' \
+#     -e 's/%%DATE_FORMAT%%/%F_%k%M%S/' \
+#     -e 's/%%ROOT_PASSWORD_VAR%%/MYSQL_ROOT_PASSWORD_FILE/' \
+#     -e 's/%%USER_PASSWORD_VAR%%/MYSQL_PASSWORD_FILE/' \
+#     > mysql.sh \
+# && chmod +x mysql.sh
 
 
 makeCredentials()
 {
-    local rootPasswordVar='MYSQL_ROOT_PASSWORD_FILE' # '%%ROOT_PASSWORD_VAR%%'
-    local userPasswordVar='MYSQL_PASSWORD_FILE' # '%%USER_PASSWORD_VAR%%'
+    local rootPasswordVar='%%ROOT_PASSWORD_VAR%%'
+    local userPasswordVar='%%USER_PASSWORD_VAR%%'
     local user="${MYSQL_USER:-\$MYSQL_USER}"
     
     if [[ "$user" == 'root' ]]; then
@@ -55,16 +78,13 @@ restore()
         args+=" -D $db"
     fi
     
-    docker compose exec -T "$SERVICE_NAME" \
+    %%COMPOSE_COMMAND%% exec -T "$SERVICE_NAME" \
         sh -c "exec mysql $args" < "$input"
 }
 
 
-# SERVICE_NAME='%%SERVICE_NAME%%'
-# DATE_FORMAT='%%DATE_FORMAT%%'
-
-SERVICE_NAME='mysql'
-DATE_FORMAT='%F_%k%M%S'
+SERVICE_NAME='%%SERVICE_NAME%%'
+DATE_FORMAT='%%DATE_FORMAT%%'
 CREDENTIALS="$(makeCredentials)"
 
 
@@ -84,14 +104,14 @@ case "$1" in
         
         echo "Save the databases dump to an $output"
 
-        docker compose exec "$SERVICE_NAME" \
+        %%COMPOSE_COMMAND%% "$SERVICE_NAME" \
             sh -c "exec mysqldump $args" > "$output"
         ;;
     'dump-db')
         db="${3:-\$MYSQL_DATABASE}"
         output="${2:-.}/$(date -u +$DATE_FORMAT)_(${3:-default}).sql"
         echo "Save the databases dump to an $output"
-        docker compose exec "$SERVICE_NAME" \
+        %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
             sh -c "exec mysqldump $CREDENTIALS \"$db\"" > "$output"
         ;;
     'restore-db')
@@ -99,7 +119,7 @@ case "$1" in
     'restore')
         restore "$2" ;;
     'shell')
-        docker compose exec "$SERVICE_NAME" \
+        %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
             sh -c "exec mysql $CREDENTIALS -D \"$MYSQL_DATABASE\""
         ;;
     *)
