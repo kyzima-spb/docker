@@ -90,9 +90,12 @@ patchUser() {
 
 # Выводит справочную информацию о программе.
 usage() {
+  local program
+  program="$(basename "$0")"
+
   cat 1>&2 <<-ENDOFUSAGE
 	Usage:
-	  $0 [-d PATH] [-e ENTRYPOINT] UID[:GID] COMMAND_STRING
+	  $program [-d PATH] [-e ENTRYPOINT] UID[:GID] COMMAND_STRING
 
 	Options:
 	  -d The directory or file to change ownership.
@@ -105,9 +108,9 @@ usage() {
 	  COMMAND_STRING A command with arguments as a single line.
 
 	Examples:
-	  $0 1001 id
-	  $0 www-data id
-	  $0 -v -d /app -e "\$BASH_SOURCE" "\$USER_UID:\$USER_GID" "\$*"
+	  $program 1001 id
+	  $program www-data id
+	  $program -v -d /app -e "\$BASH_SOURCE" "\$USER_UID:\$USER_GID" "\$*"
 ENDOFUSAGE
 }
 
