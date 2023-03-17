@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+
+
+commandExists()
+{
+    command -v "$1" > /dev/null 2>&1
+}
+
+
+# Возвращает нулевой код, если группа существует.
+groupExists()
+{
+    getent group "$1" > /dev/null 2>&1
+}
+
+
+# Перезапускает указанную команду от указанного пользователя и группы.
+switch() {
+  if commandExists 'gosu'; then
+    exec gosu "$@"
+  elif commandExists 'su-exec'; then
+    exec su-exec "$@"
+  else
+    echo 'You must install one of the packages: gosu or su-exec.' 1>&2
+    return 1
+  fi
+}
+
+
+# Парсит аргумент командной строки, отвечающий за группу
+# и возвращает целочисленный идентификатор.
+parseGroupArg() {
+  local group=${1#*:}
+
+  if ! [[ $group =~ ^[0-9]+$ ]]; then
+    if ! groupExists "$group"; then
+      echo "Group '$group' does not exists. Use a numerical ID." 1>&2
+      return 1
+    fi
+    group=$(getent group "$group" | cut -d: -f 3)
+  fi
+
+  echo "$group"
+}
+
+
+# Парсит аргумент командной строки, отвечающий за пользователя
+# и возвращает целочисленный идентификатор.
+parseUserArg() {
+  local user=${1%:*}
+
+  if [[ -z $user ]]; then
+    user=$(id -u)
+  fi
+
+  if ! [[ $user =~ ^[0-9]+$ ]]; then
+    if ! userExists "$user"; then
+      echo "User '$user' does not exists. Use a numerical ID." 1>&2
+      return 1
+    fi
+    user=$(id -u "$user")
+  fi
+
+  echo "$user"
+}
+
+
+# Патчит созданного в Dockerfile пользователя.
+#
+# Изменяет идентификатор пользователя или группы на указанные,
+# если пользоатель или группа не существует.
+#
+# Изменяет владельца домашней директории и всех указанных директорий.
+patchUser() {
+  local uid="$1"
+  local gid="$2"
+  shift 2
+
+  if ! userExists "$uid"; then
+    usermod -u "$uid" user
+  fi
+
+  if ! groupExists "$gid"; then
+    groupmod -g "$gid" user
+  fi
+
+  chown -R "$uid:$gid" "$@"
+}
+
+
+# Выводит справочную информацию о программе.
+usage() {
+  cat 1>&2 <<-ENDOFUSAGE
+	Usage:
+	  $0 [-d PATH] [-e ENTRYPOINT] UID[:GID] COMMAND_STRING
+
+	Options:
+	  -d The directory or file to change ownership.
+	  -e The path to the Docker entry point.
+	  -v Detailed mode.
+	  -h Show help.
+
+	Arguments:
+	  UID[:GID] User and group.
+	  COMMAND_STRING A command with arguments as a single line.
+
+	Examples:
+	  $0 1001 id
+	  $0 www-data id
+	  $0 -v -d /app -e "\$BASH_SOURCE" "\$USER_UID:\$USER_GID" "\$*"
+ENDOFUSAGE
+}
+
+
+# Возвращает нулевой код, если пользователь существует.
+userExists()
+{
+    getent passwd "$1" > /dev/null 2>&1
+}
+
+
+ENTRYPOINT=''
+USER_FILES=("$(getent passwd user | cut -d: -f6)")
+VERBOSE=false
+
+while getopts 'd:e:vh' opt
+do
+  case "$opt" in
+    d)
+      USER_FILES+=("$OPTARG")
+      ;;
+    e)
+      ENTRYPOINT="$OPTARG"
+      ;;
+    v)
+      VERBOSE=true
+      ;;
+    h)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+shift $(($OPTIND - 1))
+
+
+if [[ $# -lt 2 ]]; then
+  usage
+  exit 1
+fi
+
+
+if ! USER_ID=$(parseUserArg "$1"); then
+  exit 1
+fi
+
+if ! GROUP_ID=$(parseGroupArg "$1"); then
+  exit 1
+fi
+
+patchUser "$USER_ID" "$GROUP_ID" "${USER_FILES[@]}"
+
+
+COMMAND="$2"
+
+if $VERBOSE; then
+  cat <<-ENDOFMESSAGE
+	 * User:      $USER_ID ($(id -nu "$USER_ID"))
+	 * Group:     $GROUP_ID ($(getent group "$GROUP_ID" | cut -d: -f 1))
+	 * Entry:     $ENTRYPOINT
+	 * Command:   $COMMAND
+	 * User dirs: $(IFS=';' ; echo "${USER_FILES[*]}")
+ENDOFMESSAGE
+fi
+
+# then restart script as user
+if ! switch "$USER_ID:$GROUP_ID" $ENTRYPOINT $COMMAND
+then
+  exit 1
+fi
