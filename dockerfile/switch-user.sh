@@ -72,19 +72,34 @@ parseUserArg() {
 #
 # Изменяет владельца домашней директории и всех указанных директорий.
 patchUser() {
-  local uid="$1"
-  local gid="$2"
-  shift 2
+  local username="$1"
+  local uid="$2"
+  local gid="$3"
+  shift 3
+
+  if ! userExists "$USERNAME"; then
+    echo "User '$username' does not exist. Use the -u option or create a user." 1>&2
+    return 1
+  fi
 
   if ! userExists "$uid"; then
-    usermod -u "$uid" user
+    usermod -u "$uid" "$username"
   fi
 
   if ! groupExists "$gid"; then
-    groupmod -g "$gid" user
+    groupmod -g "$gid" "$username"
   fi
 
-  chown -R "$uid:$gid" "$@"
+  local homeDir
+  homeDir="$(getent passwd "$username" | cut -d: -f6)"
+
+  if [[ -d "$homeDir" ]]; then
+    chown -R "$uid:$gid" "$homeDir"
+  fi
+
+  if [[ $# -gt 0 ]]; then
+    chown -R "$uid:$gid" "$@"
+  fi
 }
 
 
@@ -100,6 +115,7 @@ usage() {
 	Options:
 	  -d The directory or file to change ownership.
 	  -e The path to the Docker entry point.
+	  -u Username to be patched.
 	  -v Detailed mode.
 	  -h Show help.
 
@@ -122,11 +138,12 @@ userExists()
 }
 
 
+USERNAME='user'
 ENTRYPOINT=''
-USER_FILES=("$(getent passwd user | cut -d: -f6)")
+USER_FILES=()
 VERBOSE=false
 
-while getopts 'd:e:vh' opt
+while getopts 'd:e:u:vh' opt
 do
   case "$opt" in
     d)
@@ -137,6 +154,9 @@ do
       ;;
     v)
       VERBOSE=true
+      ;;
+    u)
+      USERNAME="$OPTARG"
       ;;
     h)
       usage
@@ -166,7 +186,10 @@ if ! GROUP_ID=$(parseGroupArg "$1"); then
   exit 1
 fi
 
-patchUser "$USER_ID" "$GROUP_ID" "${USER_FILES[@]}"
+if ! patchUser "$USERNAME" "$USER_ID" "$GROUP_ID" "${USER_FILES[@]}"
+then
+  exit 1
+fi
 
 
 COMMAND="$2"
