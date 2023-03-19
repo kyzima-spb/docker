@@ -196,8 +196,8 @@ COMMAND="$2"
 
 if $VERBOSE; then
   printf ' * %s:\t%s\n' \
-    'User'      "$USER_ID ($(id -nu "$USER_ID"))" \
-    'Group'     "$GROUP_ID ($(getent group "$GROUP_ID" | cut -d: -f 1))" \
+    'User'      "$USER_ID ($(getent passwd "$USER_ID" | cut -d: -f1))" \
+    'Group'     "$GROUP_ID ($(getent group "$GROUP_ID" | cut -d: -f1))" \
     'Entry'     "$ENTRYPOINT" \
     'Command'   "$COMMAND" \
     'User dirs' "$(IFS=';' ; echo "${USER_FILES[*]}")"
