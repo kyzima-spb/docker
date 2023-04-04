@@ -1,37 +1,64 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 
-# Дополняет строку версии нулями до указанной длины.
-zeroFill() {
-  local n=$1
-  shift 1
-
-  echo -n "$@"
-
-  for (( i=$#; i < n; i++ )); do
-    echo -n ' 0'
-  done
+compare() {
+  case "$3" in
+    '!=')
+      test "$1" != "$2"
+      ;;
+    '==')
+      test "$1" = "$2"
+      ;;
+    '>')
+      greatThan "$1" "$2"
+      ;;
+    '>=')
+      greatThanOrEqual "$1" "$2"
+      ;;
+    '<')
+      lessThan "$1" "$2"
+      ;;
+    '<=')
+      lessThanOrEqual  "$1" "$2"
+      ;;
+    *)
+      usage
+      return 2
+      ;;
+  esac
 }
 
 
-# Возвращает наибольшее кол-во сигментов из двух версий.
-max() {
-  a=$(echo "$1" | wc -w)
-  b=$(echo "$2" | wc -w)
-  echo $(( $a > $b ? $a : $b ))
+greatThan() {
+  lessThan "$2" "$1"
+}
+
+
+greatThanOrEqual() {
+  test "$1" = "$2" || greatThan "$1" "$2"
+}
+
+
+lessThan() {
+  min="$(printf '%s\n' "$1" "$2" | sort -V | head -n1)"
+  test "$min" != "$2"
+}
+
+
+lessThanOrEqual() {
+  test "$1" = "$2" || lessThan "$1" "$2"
 }
 
 
 # Выводит справочную информацию о программе.
 usage() {
-  local program
   program="$(basename "$0")"
 
   cat 1>&2 <<-ENDOFUSAGE
 	Performs a semantic versioning comparison of two versions.
 
 	Usage:
-	  $program VERSION1 VERSION2 OPERATOR
+	  $program VERSION1 OPERATOR VERSION2
 
 	Arguments:
 	  VERSION1 Version as left operand.
@@ -40,52 +67,25 @@ usage() {
 	           Available values: == != > < >= <=
 
 	Examples:
-	  $program
-	  $program
-	  $program
+	  $program 0.9 >= 0.10
+	  $program 1.0 == 2.0
+	  $program 0.10 > 0.99.0.0
 
 	URL (https://kyzima-spb.github.io/docker-useful/dockerfile/compver.sh)
 	ENDOFUSAGE
 }
 
 
-if [[ $# -lt 3 ]]; then
+argc="$(echo "$1" | wc -w)"
+
+if [ "$argc" -lt 3 ]; then
   usage
-  exit 1
+  exit 2
 fi
 
-ver1=${1//./ }
-ver2=${2//./ }
-op="$3"
+pattern='s/(\.0+)+$//g'
+ver1="$(echo "$1" | cut -d' ' -f1 | sed -r "$pattern")"
+op="$(echo "$1" | cut -d' ' -f2)"
+ver2="$(echo "$1" | cut -d' ' -f3 | sed -r "$pattern")"
 
-maxLength=$(max "$ver1" "$ver2")
-ver1=$(zeroFill "$maxLength" $ver1)
-ver2=$(zeroFill "$maxLength" $ver2)
-
-case "$op" in
-  !=)
-    test "$ver1" != "$ver2"
-    exit $?
-    ;;
-  ==)
-    test "$ver1" = "$ver2"
-    exit $?
-    ;;
-  *=)
-    if [[ "$ver1" = "$ver2" ]]; then
-      exit 0
-    fi
-    ;;
-esac
-
-ver1=($ver1)
-ver2=($ver2)
-
-for (( i=0; i < maxLength; i++ )); do
-  if (( ver1[i] != ver2[i] )); then
-    expr="${ver1[$i]} $op ${ver2[$i]}"
-    exit $(( expr ? 0 : 1 ))
-  fi
-done
-
-exit 1
+compare "$ver1" "$ver2" "$op"
