@@ -71,7 +71,7 @@ usage() {
 	  $program 1.0 == 2.0
 	  $program 0.10 > 0.99.0.0
 
-	URL (https://kyzima-spb.github.io/docker-useful/dockerfile/compver.sh)
+	URL (https://kyzima-spb.github.io/docker-useful/compver/compver.sh)
 	ENDOFUSAGE
 }
 
