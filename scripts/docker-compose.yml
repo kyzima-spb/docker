@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8-debian
+    environment:
+      MYSQL_ROOT_PASSWORD: toor
+      MYSQL_USER: user
+      MYSQL_PASSWORD: demo
+      MYSQL_DATABASE: demo
+      MYSQL_PS1: '\U [\d]> '
+    command: [
+      "mysqld",
+      "--character-set-server=utf8mb4",
+      "--collation-server=utf8mb4_general_ci",
+      "--sql-mode="
+    ]

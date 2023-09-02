@@ -1,37 +1,22 @@
 #!/usr/bin/env bash
-#
-# Commands:
-#
-# * dump - Saves the given or all databases to a file.
-# * dump-db - Saves the given database to a file.
-# * restore - Restores all databases from the file.
-# * restore-db - Restores database from the file.
-# * shell - Access to the MySQL server console.
-#
-# Placeholders:
-#
-# * COMPOSE_COMMAND - The name of the docker compose command.
-# * SERVICE_NAME - Service name in docker-compose.
-# * DATE_FORMAT - The date format used by the date command to generate filenames.
-# * ROOT_PASSWORD_VAR - The name of the environment variable with the root password.
-# * USER_PASSWORD_VAR - The name of the environment variable with the user password.
-# 
-# Environment variables:
-# 
-# * MYSQL_USER - Force the given username to be used.
-# * MYSQL_PASSWORD - Force the given user password to be used.
-#
-# Get script:
-# 
-# wget -qO- https://kyzima-spb.github.io/docker-useful/mysql.sh.tmpl | \
-# sed \
-#     -e 's/%%COMPOSE_COMMAND%%/docker compose/' \
-#     -e 's/%%SERVICE_NAME%%/mysql/' \
-#     -e 's/%%DATE_FORMAT%%/%F_%k%M%S/' \
-#     -e 's/%%ROOT_PASSWORD_VAR%%/MYSQL_ROOT_PASSWORD_FILE/' \
-#     -e 's/%%USER_PASSWORD_VAR%%/MYSQL_PASSWORD_FILE/' \
-#     > mysql.sh \
-# && chmod +x mysql.sh
+
+
+help() {
+  echo "Usage:"
+  echo "  $0 dump [OUTPUT] [DB1 DB2...]"
+  echo "  $0 dump-db [OUTPUT] [DB]"
+  echo "  $0 restore FILE"
+  echo "  $0 restore-db FILE [DB]"
+  echo "  $0 shell"
+  echo
+  echo "Commands:"
+  echo "  dump        Saves the given or all databases to a file"
+  echo "  dump-db     Saves the given database to a file"
+  echo "  help        Shows this help"
+  echo "  restore     Restores all databases from the file"
+  echo "  restore-db  Restores database from the file"
+  echo "  shell       Access to the MySQL server console"
+}
 
 
 makeCredentials()
@@ -104,7 +89,7 @@ case "$1" in
         
         echo "Save the databases dump to an $output"
 
-        %%COMPOSE_COMMAND%% "$SERVICE_NAME" \
+        %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
             sh -c "exec mysqldump $args" > "$output"
         ;;
     'dump-db')
@@ -120,9 +105,11 @@ case "$1" in
         restore "$2" ;;
     'shell')
         %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
-            sh -c "exec mysql $CREDENTIALS -D \"$MYSQL_DATABASE\""
+            sh -c "exec mysql $CREDENTIALS -D \"\$MYSQL_DATABASE\""
         ;;
+    'help')
+        help ;;
     *)
-        echo "Usage: $0 {dump,dump-db,restore,restore-db,shell}" >&2
+        help >&2
         exit 1
 esac
