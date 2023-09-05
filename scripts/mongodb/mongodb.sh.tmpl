@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+
+
+help()
+{
+	cat 1>&2 <<-ENDOFUSAGE
+	Usage:
+	  $0 dump [OUTPUT] [OPTIONS]
+	  $0 restore FILE [OPTIONS]
+	  $0 shell
+
+	Commands:
+	  dump         Creates a GZ archive export of a database's contents
+	  help         Shows this help
+	  restore      Restores data from the GZ archive
+	  shell        Access to the MongoDB server console
+
+	Examples:
+	  $ $0 dump . -d \$MONGO_INITDB_DATABASE --dumpDbUsersAndRoles
+	  $ $0 restore ./dump.gz -d \$MONGO_INITDB_DATABASE --restoreDbUsersAndRoles
+
+	URL (https://kyzima-spb.github.io/docker-useful/scripts/mongodb/mongodb.sh)
+	ENDOFUSAGE
+}
+
+
+makeCredentials()
+{
+	local userPasswordVar='%%USER_PASSWORD_VAR%%'
+
+	if [[ "$userPasswordVar" == *_FILE ]]; then
+		local default="\$(cat \$$userPasswordVar)"
+	else
+		local default="\$$userPasswordVar"
+	fi
+
+	local user="${MONGO_USER:-\$MONGO_INITDB_ROOT_USERNAME}"
+	local password="${MONGO_PASSWORD:-$default}"
+
+	echo -n "\$("
+	echo -n "[ \"$user\" ] && [ \"$password\" ]"
+	echo -n " && echo -u \"$user\" -p \"$password\" --authenticationDatabase admin"
+	echo -n ")"
+}
+
+
+SERVICE_NAME='%%SERVICE_NAME%%'
+DATE_FORMAT='%%DATE_FORMAT%%'
+CREDENTIALS="$(makeCredentials)"
+
+
+case "$1" in
+	'dump')
+		output="${2:-.}/$(date -u +$DATE_FORMAT).gz"
+		arguments="${*:3}"
+		cmd="exec mongodump $CREDENTIALS --gzip --archive $arguments"
+
+		echo "Save the dump to an '$output'." >&2
+
+		if ! %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" sh -c "$cmd" > "$output"; then
+			echo "Dump failed, file '$output' will be deleted."
+			rm "$output"
+			exit 1
+		fi
+
+		;;
+	'restore')
+		input="$2"
+		arguments="${*:3}"
+		cmd="exec mongorestore $CREDENTIALS --gzip --archive $arguments"
+		%%COMPOSE_COMMAND%% exec -T "$SERVICE_NAME" sh -c "$cmd" < "$input"
+		;;
+	'shell')
+		%%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
+			sh -c "exec mongosh $CREDENTIALS \"\$MONGO_INITDB_DATABASE\""
+		;;
+	'help')
+		help ;;
+	*)
+		help >&2
+		exit 1
+esac

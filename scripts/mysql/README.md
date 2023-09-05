@@ -4,6 +4,20 @@
 * [Get script](#get-script)
 * [Examples](#examples)
 
+## Get script
+
+```shell
+wget -qO- https://kyzima-spb.github.io/docker-useful/scripts/mysql/mysql.sh.tmpl | \
+sed \
+  -e 's/%%COMPOSE_COMMAND%%/docker compose/' \
+  -e 's/%%SERVICE_NAME%%/db/' \
+  -e 's/%%DATE_FORMAT%%/%F_%k%M%S/' \
+  -e 's/%%ROOT_PASSWORD_VAR%%/MYSQL_ROOT_PASSWORD_FILE/' \
+  -e 's/%%USER_PASSWORD_VAR%%/MYSQL_PASSWORD_FILE/' \
+  > mysql.sh \
+&& chmod +x mysql.sh
+```
+
 ## Commands
 
 * `dump` - Saves the given or all databases to a file.
@@ -24,20 +38,6 @@
 
 * `MYSQL_USER` - Force the given username to be used.
 * `MYSQL_PASSWORD` - Force the given user password to be used.
-
-## Get script
-
-```shell
-wget -qO- https://kyzima-spb.github.io/docker-useful/scripts/mysql/mysql.sh.tmpl | \
-sed \
--e 's/%%COMPOSE_COMMAND%%/docker compose/' \
--e 's/%%SERVICE_NAME%%/db/' \
--e 's/%%DATE_FORMAT%%/%F_%k%M%S/' \
--e 's/%%ROOT_PASSWORD_VAR%%/MYSQL_ROOT_PASSWORD_FILE/' \
--e 's/%%USER_PASSWORD_VAR%%/MYSQL_PASSWORD_FILE/' \
-> mysql.sh \
-&& chmod +x mysql.sh
-```
 
 ## Examples
 
