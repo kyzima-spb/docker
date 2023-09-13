@@ -11,6 +11,7 @@ wget -qO- https://kyzima-spb.github.io/docker-useful/scripts/mysql/mysql.sh.tmpl
 sed \
   -e 's/%%COMPOSE_COMMAND%%/docker compose/' \
   -e 's/%%SERVICE_NAME%%/db/' \
+  -e 's/%%IMAGE%%/mysql/' \
   -e 's/%%DATE_FORMAT%%/%F_%k%M%S/' \
   -e 's/%%ROOT_PASSWORD_VAR%%/MYSQL_ROOT_PASSWORD_FILE/' \
   -e 's/%%USER_PASSWORD_VAR%%/MYSQL_PASSWORD_FILE/' \
@@ -22,14 +23,15 @@ sed \
 
 * `dump` - Saves the given or all databases to a file.
 * `dump-db` - Saves the given database to a file.
-* `restore` - Restores all databases from the file.
-* `restore-db` - Restores database from the file.
+* `restore` - Restores all databases from a backup file.
+* `restore-db` - Restores database from a backup file.
 * `shell` - Access to the MySQL server console.
 
 ## Placeholders
 
 * `COMPOSE_COMMAND` - The name of the docker compose command.
 * `SERVICE_NAME` - Service name in docker-compose.
+* `IMAGE` - Image name without tag.
 * `DATE_FORMAT` - The date format used by the date command to generate filenames.
 * `ROOT_PASSWORD_VAR` - The name of the environment variable with the root password.
 * `USER_PASSWORD_VAR` - The name of the environment variable with the user password.

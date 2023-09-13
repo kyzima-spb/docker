@@ -15,3 +15,11 @@ services:
       "--collation-server=utf8mb4_general_ci",
       "--sql-mode="
     ]
+  maria:
+    image: mariadb:11
+    environment:
+      MYSQL_ROOT_PASSWORD: toor
+      MYSQL_USER: user
+      MYSQL_PASSWORD: demo
+      MYSQL_DATABASE: demo
+      MYSQL_PS1: '\U [\d]> '

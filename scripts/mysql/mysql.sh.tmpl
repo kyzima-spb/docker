@@ -1,21 +1,43 @@
 #!/usr/bin/env bash
 
 
-help() {
-  echo "Usage:"
-  echo "  $0 dump [OUTPUT] [DB1 DB2...]"
-  echo "  $0 dump-db [OUTPUT] [DB]"
-  echo "  $0 restore FILE"
-  echo "  $0 restore-db FILE [DB]"
-  echo "  $0 shell"
-  echo
-  echo "Commands:"
-  echo "  dump        Saves the given or all databases to a file"
-  echo "  dump-db     Saves the given database to a file"
-  echo "  help        Shows this help"
-  echo "  restore     Restores all databases from the file"
-  echo "  restore-db  Restores database from the file"
-  echo "  shell       Access to the MySQL server console"
+__VERSION__='0.1.0'
+
+serviceName='%%SERVICE_NAME%%'
+dateFormat='%%DATE_FORMAT%%'
+image='%%IMAGE%%'
+
+[[ "$image" = 'mariadb' ]] && clientName='mariadb' || clientName='mysql'
+[[ "$image" = 'mariadb' ]] && dumpCommand='mariadb-dump' || dumpCommand='mysqldump'
+
+
+help()
+{
+	cat 1>&2 <<-ENDOFUSAGE
+	Usage:
+	  $0 dump [OUTPUT] [DB1 DB2...]
+	  $0 dump-db [OUTPUT] [DB]
+	  $0 restore < SQL-SCRIPT
+	  $0 restore-db [DB] < SQL-SCRIPT
+	  $0 shell
+
+	Commands:
+	  dump        Saves the given or all databases to a file
+	  dump-db     Saves the given database to a file
+	  help        Shows this help
+	  restore     Restores all databases from a backup file
+	  restore-db  Restores database from a backup file
+	  shell       Access to the MySQL server console
+
+	Examples:
+	  $ $0 dump-db ./backups
+	  $ $0 restore-db < ./backups/2023-09-13_110838_(default).sql
+	  $ MYSQL_USER=root MYSQL_PASSWORD=toor $0 dump ./backups
+	  $ MYSQL_USER=root MYSQL_PASSWORD=toor $0 restore < ./backups/2023-09-13_111049_full.sql
+	  $ echo "select 1;" | $0 shell
+
+	URL (https://kyzima-spb.github.io/docker-useful/scripts/mysql/)
+	ENDOFUSAGE
 }
 
 
@@ -24,11 +46,12 @@ makeCredentials()
     local rootPasswordVar='%%ROOT_PASSWORD_VAR%%'
     local userPasswordVar='%%USER_PASSWORD_VAR%%'
     local user="${MYSQL_USER:-\$MYSQL_USER}"
+    local default
     
     if [[ "$user" == 'root' ]]; then
-        local default="$(passwordValue "$rootPasswordVar")"
+        default="$(passwordValue "$rootPasswordVar")"
     else
-        local default="$(passwordValue "$userPasswordVar")"
+        default="$(passwordValue "$userPasswordVar")"
     fi
     
     local password="${MYSQL_PASSWORD:-$default}"
@@ -49,64 +72,82 @@ passwordValue()
 
 restore()
 {
-    local input="$1"
-    local db="$2"
-    local args="$CREDENTIALS"
-    
-    if [[ -z $input ]]; then
-        echo "Usage $0 restore FILE" >&2
-        echo "Usage $0 restore-db FILE [DB]" >&2
+    local db="$1"
+
+    if [[ -t 0 ]]; then
+        help >&2
         exit 1
     fi
+
+    local cmd
+    cmd="exec $clientName $(makeCredentials)"
     
-    if [[ ! -z $db ]]; then
-        args+=" -D $db"
+    if [[ -n $db ]]; then
+        cmd+=" -D $db"
     fi
+
+    echo 'Restore MySQL server data from a backup file' >&2
     
-    %%COMPOSE_COMMAND%% exec -T "$SERVICE_NAME" \
-        sh -c "exec mysql $args" < "$input"
+    %%COMPOSE_COMMAND%% exec -T "$serviceName" sh -c "$cmd"
 }
 
 
-SERVICE_NAME='%%SERVICE_NAME%%'
-DATE_FORMAT='%%DATE_FORMAT%%'
-CREDENTIALS="$(makeCredentials)"
+dump()
+{
+    local output="$1"
+    local cmd
+    cmd="exec $dumpCommand $(makeCredentials) --no-tablespaces $2"
+
+    echo "Save the dump to an $output" >&2
+
+    if ! %%COMPOSE_COMMAND%% exec "$serviceName" sh -c "$cmd" > "$output"; then
+        echo "Dump failed, file '$output' will be deleted." >&2
+        rm "$output"
+        exit 1
+    fi
+}
 
 
 case "$1" in
     'dump')
-        databases=${@:3:$#}
-        output="${2:-.}/$(date -u +$DATE_FORMAT)"
-        args="$CREDENTIALS"
+        databases=${*:3:$#}
+        output="${2:-.}/$(date -u +$dateFormat)"
         
         if [[ -z $databases ]]; then
-            output+="_full.sql"
-            args+=' --all-databases'
+            db='--all-databases'
+            dump "${output}_full.sql" "$db"
         else
-            output+="_(${databases// /,}).sql"
-            args+=" --databases $databases"
+            db="--databases $databases"
+            dump "${output}_(${databases// /,}).sql" "$db"
         fi
-        
-        echo "Save the databases dump to an $output"
-
-        %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
-            sh -c "exec mysqldump $args" > "$output"
         ;;
     'dump-db')
         db="${3:-\$MYSQL_DATABASE}"
-        output="${2:-.}/$(date -u +$DATE_FORMAT)_(${3:-default}).sql"
-        echo "Save the databases dump to an $output"
-        %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
-            sh -c "exec mysqldump $CREDENTIALS \"$db\"" > "$output"
+        output="${2:-.}/$(date -u +$dateFormat)_${3:-default}.sql"
+        dump "$output" "$db"
         ;;
     'restore-db')
-        restore "$2" "${3:-\$MYSQL_DATABASE}" ;;
+        db="${2:-\$MYSQL_DATABASE}"
+        restore "$db" ;;
     'restore')
-        restore "$2" ;;
+        restore ;;
     'shell')
-        %%COMPOSE_COMMAND%% exec "$SERVICE_NAME" \
-            sh -c "exec mysql $CREDENTIALS -D \"\$MYSQL_DATABASE\""
+        [[ -t 0 ]] && interactive="" || interactive="-T"
+        %%COMPOSE_COMMAND%% exec $interactive "$serviceName" \
+            sh -c "exec $clientName $(makeCredentials) -D \"\$MYSQL_DATABASE\""
         ;;
+#    'update')
+##    	wget -qO- https://kyzima-spb.github.io/docker-useful/scripts/mysql/mysql.sh.tmpl | \
+#        sed \
+#          -e 's/\%\%COMPOSE_COMMAND\%\%/%%COMPOSE_COMMAND%%/' \
+#          -e 's/\%\%SERVICE_NAME\%\%/%%SERVICE_NAME%%/' \
+#          -e 's/\%\%DATE_FORMAT\%\%/%%DATE_FORMAT%%/' \
+#          -e 's/\%\%ROOT_PASSWORD_VAR\%\%/%%ROOT_PASSWORD_VAR%%/' \
+#          -e 's/\%\%USER_PASSWORD_VAR\%\%/%%USER_PASSWORD_VAR%%/' \
+#          ./mysql.sh.tmpl  \
+#          > "$0" \
+#        && chmod +x "$0"
+#    	;;
     'help')
         help ;;
     *)
