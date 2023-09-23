@@ -16,7 +16,7 @@ from urllib.error import HTTPError
 from urllib.request import urlopen
 
 
-__VERSION__ = '0.1.0'
+__VERSION__ = '0.1.1'
 BASE_URL = 'https://kyzima-spb.github.io/docker-useful/scripts/deploy'
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -154,33 +154,6 @@ def make_secret(
     secret_file.parent.mkdir(parents=True, exist_ok=True)
     secret_file.write_text(value)
     logger.info('%s: the secret has been created' % secret_file.name)
-
-
-@ctx
-def compose_build(argv, build_args: t.Sequence[str] = ()) -> None:
-    """
-    Запускает команду docker compose build с указанными аргументами.
-
-    В режиме разработки восстанавливает файл docker-compose.override.yml.
-    В других режимах сохраняет копию файла docker-compose.override.yml под другим именем.
-    """
-    compose_override_file = argv.workdir / 'docker-compose.override.yml'
-
-    if argv.development:
-        logger.info('Building development version...')
-        restore_file(compose_override_file)
-    else:
-        logger.info('Building production version...')
-        backup_file(compose_override_file)
-
-    output = subprocess.check_output(['docker', 'help'], text=True)
-
-    if output.find('compose') == -1:
-        args = ['docker-compose', 'build', *build_args]
-    else:
-        args = ['docker', 'compose', 'build', *build_args]
-
-    subprocess.check_call(args, cwd=argv.workdir)
 
 
 def main() -> int:
