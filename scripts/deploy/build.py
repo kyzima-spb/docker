@@ -3,6 +3,7 @@ import argparse
 import logging
 import importlib
 import os
+from packaging import version
 from pathlib import Path
 import platform
 from random import randrange
@@ -15,6 +16,7 @@ from urllib.error import HTTPError
 from urllib.request import urlopen
 
 
+__VERSION__ = '0.1.0'
 BASE_URL = 'https://kyzima-spb.github.io/docker-useful/scripts/deploy'
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -30,18 +32,27 @@ class UpdateAction(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         url = f'{BASE_URL}/build.py'
+        current_version = version.parse(__VERSION__)
 
         try:
             with urlopen(url) as u:
-                Path(__file__).write_bytes(u.read())
+                script = u.read().decode()
+                latest_version = version.parse(
+                    subprocess.check_output(['python3', '-c', script, '-v'], text=True)
+                )
+
+            formatter = parser._get_formatter()
+
+            if current_version < latest_version:
+                Path(__file__).write_text(script)
+                formatter.add_text('The update was successful')
+            else:
+                formatter.add_text('The latest version is installed.')
+
+            parser._print_message(formatter.format_help())
+            parser.exit()
         except HTTPError as err:
             parser.exit(1, f'{err}\n')
-
-        formatter = parser._get_formatter()
-        formatter.add_text('The update was successful')
-        parser._print_message(formatter.format_help())
-
-        parser.exit()
 
 
 class Context:
@@ -175,6 +186,11 @@ def compose_build(argv, build_args: t.Sequence[str] = ()) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(
         epilog=f'URL ({BASE_URL})'
+    )
+    parser.add_argument(
+        '-v', '--version',
+        action='version',
+        version=__VERSION__,
     )
     parser.add_argument(
         '--update',
