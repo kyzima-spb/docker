@@ -15,21 +15,6 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v3
-#      -
-#        name: Docker meta
-#        id: meta
-#        uses: docker/metadata-action@v4
-#        with:
-#          images: |
-#            ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
-#          tags: |
-#            type=raw,${{ matrix.version }},enable=${{ matrix.latestNode && matrix.latestOS }}
-#            type=raw,${{ matrix.version }}-node${{ matrix.node }},enable=${{ matrix.latestOS }}
-#            type=raw,${{ matrix.version }}-${{ matrix.os }},enable=${{ matrix.latestNode }}
-#            ${{ matrix.version }}-node${{ matrix.node }}-${{ matrix.os }}
-#          flavor: |
-#            latest=${{ matrix.latest }}
-#            prefix=${{ matrix.prefix }}
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
