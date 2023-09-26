@@ -16,7 +16,7 @@ from urllib.error import HTTPError
 from urllib.request import urlopen
 
 
-__VERSION__ = '0.1.1'
+__VERSION__ = '0.1.2'
 BASE_URL = 'https://kyzima-spb.github.io/docker-useful/scripts/deploy'
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -68,12 +68,12 @@ class Context:
 ctx = Context()
 
 
-def execute_user_scripts(argv, context: Context) -> None:
+def execute_user_scripts(argv, context: Context) -> int:
     """Выполняет пользовательские скрипты из директории build.d."""
     scripts_dir = Path(__file__).with_suffix('.d')
 
     if not scripts_dir.is_dir():
-        return None
+        return 1
 
     for filename in sorted(scripts_dir.iterdir()):
         suffix = filename.suffix
@@ -92,6 +92,8 @@ def execute_user_scripts(argv, context: Context) -> None:
                 str(filename),
                 cwd=argv.workdir,
             )
+
+    return 0
 
 
 @ctx
@@ -136,6 +138,7 @@ def make_secret(
     length: t.Optional[int] = None,
     rewrite: bool = False,
     value: t.Callable[[], str] = '',
+    symbols: str = digits + ascii_letters + '!#$%&()*+-.;=?[]^_{}~',
 ) -> None:
     """Создает файл с данными, который будет использоваться как Docker-секрет."""
     if secret_file.exists() and not rewrite:
@@ -146,7 +149,6 @@ def make_secret(
         length = randrange(64, 128)
 
     if not value:
-        symbols = digits + ascii_letters + '!#$%&()*+-.:;=?@[]^_{}~'
         value = ''.join(secrets.choice(symbols) for _ in range(length))
     elif callable(value):
         value = value()
@@ -197,9 +199,7 @@ def main() -> int:
             delimiter.join(str(f) for f in files if f.exists())
         )
 
-    execute_user_scripts(argv, ctx)
-
-    return 0
+    return execute_user_scripts(argv, ctx)
 
 
 if __name__ == '__main__':
