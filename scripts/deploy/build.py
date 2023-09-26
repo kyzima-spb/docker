@@ -16,7 +16,7 @@ from urllib.error import HTTPError
 from urllib.request import urlopen
 
 
-__VERSION__ = '0.1.3'
+__VERSION__ = '0.1.4'
 BASE_URL = 'https://kyzima-spb.github.io/docker-useful/scripts/deploy'
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -158,11 +158,43 @@ def make_secret(
     logger.info('%s: the secret has been created' % secret_file.name)
 
 
+def user_input(msg='Введите значение', default=None, value_callback=None,
+               trim_spaces=True, show_default=True, required=False):
+    if show_default and default is not None:
+        msg += f' [{default}]'
+
+    if default is not None:
+        required = False
+
+    while 1:
+        value = input(f'{msg}: ')
+
+        if trim_spaces:
+            value = value.strip()
+
+        if value:
+            if value_callback is None:
+                return value
+
+            try:
+                return value_callback(value)
+            except ValueError as err:
+                print(err)
+
+        else:
+            if not required:
+                return default
+
+            print('Требуется ввести значение')
+
+
 @ctx
 def prompt(
     msg: str,
     default: t.Optional[t.Any] = None,
     callback: t.Optional[t.Callable[[str], t.Any]] = None,
+    trim_spaces: bool = True,
+    show_default: bool = True,
 ) -> t.Any:
     """
     Requests input from the user and returns input.
@@ -171,17 +203,28 @@ def prompt(
         msg (str): prompt message.
         default (mixed): the value to be used if the input is empty.
         callback (callable): callback function to process the entered value.
+        trim_spaces (bool): remove spaces from the beginning and end of a string.
+        show_default (bool): show default value when entering.
     """
+    if show_default and default is not None:
+        msg += f' [{default}]'
+
     while 1:
         value = input(f'{msg}: ')
 
-        if not value:
-            return default
-
-        if callback is None:
-            return value
+        if trim_spaces:
+            value = value.strip()
 
         try:
+            if not value and default is None:
+                raise ValueError('Value required')
+
+            if not value:
+                value = default
+
+            if callback is None:
+                return value
+
             return callback(value)
         except ValueError as e:
             print(e)
