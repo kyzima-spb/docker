@@ -16,7 +16,7 @@ from urllib.error import HTTPError
 from urllib.request import urlopen
 
 
-__VERSION__ = '0.1.2'
+__VERSION__ = '0.1.3'
 BASE_URL = 'https://kyzima-spb.github.io/docker-useful/scripts/deploy'
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -156,6 +156,35 @@ def make_secret(
     secret_file.parent.mkdir(parents=True, exist_ok=True)
     secret_file.write_text(value)
     logger.info('%s: the secret has been created' % secret_file.name)
+
+
+@ctx
+def prompt(
+    msg: str,
+    default: t.Optional[t.Any] = None,
+    callback: t.Optional[t.Callable[[str], t.Any]] = None,
+) -> t.Any:
+    """
+    Requests input from the user and returns input.
+
+    Arguments:
+        msg (str): prompt message.
+        default (mixed): the value to be used if the input is empty.
+        callback (callable): callback function to process the entered value.
+    """
+    while 1:
+        value = input(f'{msg}: ')
+
+        if not value:
+            return default
+
+        if callback is None:
+            return value
+
+        try:
+            return callback(value)
+        except ValueError as e:
+            print(e)
 
 
 def main() -> int:
