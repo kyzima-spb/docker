@@ -72,9 +72,11 @@ clearEnvironment() {
 fileEnv() {
     local var="$1"
     local fileVar="${var}_FILE"
+    local default="${2:-}"
+
+    # for backwards compatibility with sh
     eval "local value=\$$var"
     eval "local secretPath=\$$fileVar"
-    local default="${2:-}"
     
   	if [ -n "$value" ] && [ -n "$secretPath" ]; then
         echo >&2 "Both $var and $fileVar are set (but are exclusive)."
@@ -85,13 +87,17 @@ fileEnv() {
         value="$(cat "$secretPath")"
     fi
     
-    if [ -z "$value" ] && [ $# -eq 1 ]; then
-        echo >&2 "$var or $fileVar require a value."
-        exit 1
-    else
-        value="$default"
+    if [ -z "$value" ]; then
+        if [ $# -eq 1 ]; then
+            echo >&2 "$var or $fileVar require a value."
+            exit 1
+        else
+            value="$default"
+        fi
     fi
+
+    unset "$var"
+    unset "$fileVar"
     
     export "$var"="$value"
-    unset "$fileVar"
 }
