@@ -128,7 +128,7 @@ usage() {
 	  $program www-data id
 	  $program -v -d /app -e "\$BASH_SOURCE" "\$USER_UID:\$USER_GID" "\$*"
 
-	URL (https://kyzima-spb.github.io/docker-useful/switch-user/switch-user.sh)
+	URL (https://kyzima-spb.github.io/docker-useful/apps/switch-user/switch-user.sh)
 	ENDOFUSAGE
 }
 

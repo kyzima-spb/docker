@@ -1,0 +1,9 @@
+.git*
+.dockerignore
+**/Dockerfile
+
+compver/*
+!compver/compver.sh
+
+
+**/test_*
