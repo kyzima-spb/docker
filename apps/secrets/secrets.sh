@@ -1,3 +1,6 @@
+#!/usr/bin/env sh
+#FILE:secrets.sh
+
 # Clears environment variables with a specific prefix.
 # 
 # Takes a single argument, VAR_PREFIX, which is used to identify
@@ -22,8 +25,7 @@
 #   0 - Success
 #   1 - Error due to missing VAR_PREFIX
 clearEnvironment() {
-    local varPrefix="$1"
-    local name
+    varPrefix="$1"
 
     test -z "$varPrefix" && echo >&2 "Variable prefix is required." && exit 1
     
@@ -70,9 +72,9 @@ clearEnvironment() {
 #   # Output: MY_VAR or MY_VAR_FILE require a value.
 #   # Exits with status 1
 fileEnv() {
-    local var="$1"
-    local fileVar="${var}_FILE"
-    local default="${2:-}"
+    var="$1"
+    fileVar="${var}_FILE"
+    default="${2:-}"
 
     # for backwards compatibility with sh
     eval "local value=\$$var"
@@ -101,3 +103,39 @@ fileEnv() {
     
     export "$var"="$value"
 }
+
+
+usage() {
+  program="$(basename "$0")"
+
+  cat 1>&2 <<-ENDOFUSAGE
+	Usage:
+	  $program VAR_NAME [DEFAULT_VALUE]
+
+	Arguments:
+    VAR_NAME The name of the environment variable to be set.
+    [DEFAULT_VALUE] A default value to use if neither the environment variable nor the file variable is set.
+
+	Examples:
+	  $program PASSWORD
+	  $program PASSWORD 'very_secret_password'
+
+	URL (https://kyzima-spb.github.io/docker-useful/apps/secrets/secrets.sh)
+	ENDOFUSAGE
+}
+
+
+main() {
+  if [ $# -lt 1 ]; then
+    usage
+    exit 1
+  fi
+
+  fileEnv "$@"
+  eval "echo \$$1"
+}
+
+
+if grep '^#FILE:secrets.sh' "$0" > /dev/null; then
+  main "$@"
+fi
