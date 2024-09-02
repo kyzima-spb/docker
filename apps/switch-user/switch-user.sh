@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#FILE:switch-user.sh
 
 
 commandExists()
@@ -78,7 +79,7 @@ patchUser() {
   shift 3
 
   if ! userExists "$USERNAME"; then
-    echo "User '$username' does not exist. Use the -u option or create a user." 1>&2
+    echo 1>&2 "User '$username' does not exist. Use the -u option or create a user."
     return 1
   fi
 
@@ -140,73 +141,81 @@ userExists()
 }
 
 
-USERNAME='user'
-ENTRYPOINT=''
-USER_FILES=()
-VERBOSE=false
+main()
+{
+  USERNAME='user'
+  ENTRYPOINT=''
+  USER_FILES=()
+  VERBOSE=false
 
-while getopts 'd:e:u:vh' opt
-do
-  case "$opt" in
-    d)
-      USER_FILES+=("$OPTARG")
-      ;;
-    e)
-      ENTRYPOINT="$OPTARG"
-      ;;
-    v)
-      VERBOSE=true
-      ;;
-    u)
-      USERNAME="$OPTARG"
-      ;;
-    h)
-      usage
-      exit 0
-      ;;
-    *)
-      usage
-      exit 1
-      ;;
-  esac
-done
+  while getopts 'd:e:u:vh' opt
+  do
+    case "$opt" in
+      d)
+        USER_FILES+=("$OPTARG")
+        ;;
+      e)
+        ENTRYPOINT="$OPTARG"
+        ;;
+      v)
+        VERBOSE=true
+        ;;
+      u)
+        USERNAME="$OPTARG"
+        ;;
+      h)
+        usage
+        exit 0
+        ;;
+      *)
+        usage
+        exit 1
+        ;;
+    esac
+  done
 
-shift $(($OPTIND - 1))
-
-
-if [[ $# -lt 2 ]]; then
-  usage
-  exit 1
-fi
+  shift $(($OPTIND - 1))
 
 
-if ! USER_ID=$(parseUserArg "$1"); then
-  exit 1
-fi
-
-if ! GROUP_ID=$(parseGroupArg "$1"); then
-  exit 1
-fi
-
-if ! patchUser "$USERNAME" "$USER_ID" "$GROUP_ID" "${USER_FILES[@]}"
-then
-  exit 1
-fi
+  if [[ $# -lt 2 ]]; then
+    usage
+    exit 1
+  fi
 
 
-COMMAND="$2"
+  if ! USER_ID=$(parseUserArg "$1"); then
+    exit 1
+  fi
 
-if $VERBOSE; then
-  printf ' * %s:\t%s\n' \
-    'User'      "$USER_ID ($(getent passwd "$USER_ID" | cut -d: -f1))" \
-    'Group'     "$GROUP_ID ($(getent group "$GROUP_ID" | cut -d: -f1))" \
-    'Entry'     "$ENTRYPOINT" \
-    'Command'   "$COMMAND" \
-    'User dirs' "$(IFS=';' ; echo "${USER_FILES[*]}")"
-fi
+  if ! GROUP_ID=$(parseGroupArg "$1"); then
+    exit 1
+  fi
 
-# then restart script as user
-if ! switch "$USER_ID:$GROUP_ID" $ENTRYPOINT $COMMAND
-then
-  exit 1
+  if ! patchUser "$USERNAME" "$USER_ID" "$GROUP_ID" "${USER_FILES[@]}"
+  then
+    exit 1
+  fi
+
+
+  COMMAND="$2"
+
+  if $VERBOSE; then
+    printf ' * %s:\t%s\n' \
+      'User'      "$USER_ID ($(getent passwd "$USER_ID" | cut -d: -f1))" \
+      'Group'     "$GROUP_ID ($(getent group "$GROUP_ID" | cut -d: -f1))" \
+      'Entry'     "$ENTRYPOINT" \
+      'Command'   "$COMMAND" \
+      'User dirs' "$(IFS=';' ; echo "${USER_FILES[*]}")"
+  fi
+
+  # then restart script as user
+  if ! switch "$USER_ID:$GROUP_ID" $ENTRYPOINT $COMMAND
+  then
+    exit 1
+  fi
+}
+
+
+if grep '^#FILE:switch-user.sh' "$0" > /dev/null; then
+  main "$@"
 fi
