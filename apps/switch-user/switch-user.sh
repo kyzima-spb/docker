@@ -78,7 +78,7 @@ patchUser() {
   local gid="$3"
   shift 3
 
-  if ! userExists "$USERNAME"; then
+  if ! userExists "$username"; then
     echo 1>&2 "User '$username' does not exist. Use the -u option or create a user."
     return 1
   fi
