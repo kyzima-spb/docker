@@ -104,6 +104,29 @@ patchUser() {
 }
 
 
+# fixPermissions()
+# {
+#   local group="$1"
+#   local groupId="$2"
+
+#   if ! getGroup "$group"; then
+#     echo 1>&2 "Group '$group' does not exists."
+#     return 1
+#   fi
+
+  
+
+
+
+#   # groupmod -g "$gid" "$username"
+# }
+
+# getGroup() {
+#   gid=$(getent group "$1") || return 1
+#   echo "$gid" | cut -d: -f3
+# }
+
+
 # Выводит справочную информацию о программе.
 usage() {
   local program
@@ -216,6 +239,6 @@ main()
 }
 
 
-if grep '^#FILE:switch-user.sh' "$0" > /dev/null; then
+if grep '^#FILE:switch-user.sh' "$0" > /dev/null 2>&1; then
   main "$@"
 fi

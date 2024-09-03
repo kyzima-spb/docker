@@ -136,6 +136,6 @@ main() {
 }
 
 
-if grep '^#FILE:secrets.sh' "$0" > /dev/null; then
+if grep '^#FILE:secrets.sh' "$0" > /dev/null 2>&1; then
   main "$@"
 fi
