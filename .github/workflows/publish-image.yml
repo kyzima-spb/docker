@@ -9,22 +9,27 @@ on:
       - .github/workflows/publish-image.yml
       - 'apps/**'
 
+permissions:
+  packages: write
+
 jobs:
   run:
     uses: kyzima-spb/gh-actions/.github/workflows/docker-build-image.yml@master
     secrets:
       docker-username: ${{ secrets.DOCKER_HUB_USERNAME }}
       docker-password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      github-token: ${{ secrets.PAT }}
+      github-token: ${{ secrets.GITHUB_TOKEN }}
     with:
       context: ./apps
       file: ./Dockerfile
       platforms: linux/amd64,linux/arm/v7,linux/arm64
       images: |
         ${{ vars.IMAGE_NAME }},enable=${{ github.ref_name == 'master' }}
-        ghcr,enable=${{ github.ref_name != 'master' }}
+        {ghcr},enable=${{ github.ref_name != 'master' }}
       tags: |
         test,enable=${{ github.ref_name != 'master' }}
+      flavor: |
+          latest=true
       cache: |
         arg=default,type=gha
       push: true
