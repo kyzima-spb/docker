@@ -27,9 +27,8 @@ jobs:
         ${{ vars.IMAGE_NAME }},enable=${{ github.ref_name == 'master' }}
         {ghcr},enable=${{ github.ref_name != 'master' }}
       tags: |
+        latest,enable=${{ github.ref_name == 'master' }}
         test,enable=${{ github.ref_name != 'master' }}
-      flavor: |
-          latest=true
       cache: |
         arg=default,type=gha
       push: true
