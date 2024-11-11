@@ -2,6 +2,7 @@ from __future__ import annotations
 import argparse
 import logging
 import importlib
+import importlib.util
 import os
 from packaging import version
 from pathlib import Path
